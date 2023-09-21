@@ -173,6 +173,82 @@ export class EvaluatedFormulaBinaryTerm extends EvaluatedFormulaTerm
     }
 }
 
+export function evaluateTerm(term: Parse.FormulaTerm, context: FormulaEvaluationContext): FormulaEvaluationResult
+{
+    function visitLiteralTerm(term: Parse.FormulaLiteralTerm, param: never): EvaluatedFormulaTerm
+    {
+        return new EvaluatedFormulaTerm(term, term.value);
+    }
+
+    function visitDieRollTerm(term: Parse.FormulaDieRollTerm, param: never): EvaluatedFormulaTerm
+    {
+        const rolls = new Array<number>();
+        for (let i = 0; i < term.dieCount; i++)
+        {
+            rolls.push(context.rollDie(term.dieSides));
+        }
+
+        return new EvaluatedFormulaDieRollTerm(term, rolls);
+    }
+
+    function visitStatTerm(term: Parse.FormulaStatTerm, param: never): EvaluatedFormulaTerm
+    {
+        const stat = context.character.getStatistic(term.statId);
+        if (stat !== undefined)
+        {
+            return new EvaluatedFormulaStatTerm(term, stat.id, context.character.evaluateStatistic(term.statId).finalValue);
+        }
+        else
+        {
+            return new EvaluatedFormulaStatTerm(term, null, 0);
+        }
+    }
+
+    function visitUnaryTerm(term: Parse.FormulaUnaryTerm, param: never): EvaluatedFormulaTerm
+    {
+        const evaluatedOperand = visitTerm(term.operand);
+
+        switch (term.operator.type)
+        {
+            case Scan.FormulaTokenType.hyphen:
+                return new EvaluatedFormulaUnaryTerm(term, evaluatedOperand.value * -1, evaluatedOperand);
+            default:
+                // ERROR: WTF??
+                return evaluatedOperand;
+        }
+    }
+
+    function visitBinaryTerm(term: Parse.FormulaBinaryTerm, param: never): EvaluatedFormulaTerm
+    {
+        const evaluatedFirstOperand = visitTerm(term.firstOperand);
+        const evaluatedSecondOperand = visitTerm(term.secondOperand);
+
+        switch (term.operator.type)
+        {
+            case Scan.FormulaTokenType.plus:
+                return new EvaluatedFormulaBinaryTerm(term, evaluatedFirstOperand.value + evaluatedSecondOperand.value, evaluatedFirstOperand, evaluatedSecondOperand);
+            case Scan.FormulaTokenType.hyphen:
+                return new EvaluatedFormulaBinaryTerm(term, evaluatedFirstOperand.value - evaluatedSecondOperand.value, evaluatedFirstOperand, evaluatedSecondOperand);
+            case Scan.FormulaTokenType.asterisk:
+                return new EvaluatedFormulaBinaryTerm(term, evaluatedFirstOperand.value * evaluatedSecondOperand.value, evaluatedFirstOperand, evaluatedSecondOperand);
+            case Scan.FormulaTokenType.slash:
+                return new EvaluatedFormulaBinaryTerm(term, evaluatedFirstOperand.value / evaluatedSecondOperand.value, evaluatedFirstOperand, evaluatedSecondOperand);
+            default:
+                // ERROR: WTF??
+                return new EvaluatedFormulaTerm(term, evaluatedFirstOperand.value);
+        }
+    }
+
+    function visitTerm(term: Parse.FormulaTerm): EvaluatedFormulaTerm
+    {
+        return term.visit({ visitLiteralTerm, visitDieRollTerm, visitStatTerm, visitUnaryTerm, visitBinaryTerm }, null);
+    }
+
+    const evaluatedRootTerm = visitTerm(term);
+
+    return new FormulaEvaluationResult(term.source, new FormulaEvaluationSuccess(evaluatedRootTerm), []);
+}
+
 
 export function evaluateFormula(formula: string, context: FormulaEvaluationContext): FormulaEvaluationResult
 {
@@ -181,78 +257,7 @@ export function evaluateFormula(formula: string, context: FormulaEvaluationConte
 
     if (rootTerm !== undefined)
     {
-        function visitLiteralTerm(term: Parse.FormulaLiteralTerm, param: never): EvaluatedFormulaTerm
-        {
-            return new EvaluatedFormulaTerm(term, term.value);
-        }
-
-        function visitDieRollTerm(term: Parse.FormulaDieRollTerm, param: never): EvaluatedFormulaTerm
-        {
-            const rolls = new Array<number>();
-            for (let i = 0; i < term.dieCount; i++)
-            {
-                rolls.push(context.rollDie(term.dieSides));
-            }
-
-            return new EvaluatedFormulaDieRollTerm(term, rolls);
-        }
-
-        function visitStatTerm(term: Parse.FormulaStatTerm, param: never): EvaluatedFormulaTerm
-        {
-            const stat = context.character.getStatistic(term.statId);
-            if (stat !== undefined)
-            {
-                return new EvaluatedFormulaStatTerm(term, stat.id, context.character.evaluateStatistic(term.statId).finalValue);
-            }
-            else
-            {
-                return new EvaluatedFormulaStatTerm(term, null, 0);
-            }
-        }
-
-        function visitUnaryTerm(term: Parse.FormulaUnaryTerm, param: never): EvaluatedFormulaTerm
-        {
-            const evaluatedOperand = visitTerm(term.operand);
-
-            switch (term.operator.type)
-            {
-                case Scan.FormulaTokenType.hyphen:
-                    return new EvaluatedFormulaUnaryTerm(term, evaluatedOperand.value * -1, evaluatedOperand);
-                default:
-                    // ERROR: WTF??
-                    return evaluatedOperand;
-            }
-        }
-
-        function visitBinaryTerm(term: Parse.FormulaBinaryTerm, param: never): EvaluatedFormulaTerm
-        {
-            const evaluatedFirstOperand = visitTerm(term.firstOperand);
-            const evaluatedSecondOperand = visitTerm(term.secondOperand);
-
-            switch (term.operator.type)
-            {
-                case Scan.FormulaTokenType.plus:
-                    return new EvaluatedFormulaBinaryTerm(term, evaluatedFirstOperand.value + evaluatedSecondOperand.value, evaluatedFirstOperand, evaluatedSecondOperand);
-                case Scan.FormulaTokenType.hyphen:
-                    return new EvaluatedFormulaBinaryTerm(term, evaluatedFirstOperand.value - evaluatedSecondOperand.value, evaluatedFirstOperand, evaluatedSecondOperand);
-                case Scan.FormulaTokenType.asterisk:
-                    return new EvaluatedFormulaBinaryTerm(term, evaluatedFirstOperand.value * evaluatedSecondOperand.value, evaluatedFirstOperand, evaluatedSecondOperand);
-                case Scan.FormulaTokenType.slash:
-                    return new EvaluatedFormulaBinaryTerm(term, evaluatedFirstOperand.value / evaluatedSecondOperand.value, evaluatedFirstOperand, evaluatedSecondOperand);
-                default:
-                    // ERROR: WTF??
-                    return new EvaluatedFormulaTerm(term, evaluatedFirstOperand.value);
-            }
-        }
-
-        function visitTerm(term: Parse.FormulaTerm): EvaluatedFormulaTerm
-        {
-            return term.visit({ visitLiteralTerm, visitDieRollTerm, visitStatTerm, visitUnaryTerm, visitBinaryTerm }, null);
-        }
-
-        const evaluatedRootTerm = visitTerm(rootTerm);
-
-        return new FormulaEvaluationResult(formula, new FormulaEvaluationSuccess(evaluatedRootTerm), []);
+        return evaluateTerm(rootTerm, context);
     }
     else
     {

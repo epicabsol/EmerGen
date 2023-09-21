@@ -1,4 +1,8 @@
 import type { IAttributeDefinition, IGameData } from "./GameData";
+import { FormulaSpan } from "./Formula";
+import * as Scan from "./FormulaScan";
+import * as Parse from "./FormulaParse";
+import * as Evaluate from "./FormulaEvaluate";
 
 export interface IStat
 {
@@ -93,6 +97,38 @@ export class CharacterAttribute extends UpgradableStat
     public constructor(id: string, levelUpPoints: number[])
     {
         super(id, levelUpPoints);
+    }
+}
+
+export class DerivedStat implements IStat
+{
+    public readonly id: string;
+    public readonly formula: string;
+    private readonly character: CharacterSheet;
+    private readonly gameData: IGameData;
+    private readonly rootTerm: Parse.FormulaTerm;
+
+    public constructor(id: string, formula: string, character: CharacterSheet, gameData: IGameData)
+    {
+        this.id = id;
+        this.formula = formula;
+        this.character = character;
+        this.gameData = gameData;
+        this.rootTerm = Parse.parseFormula(formula, Scan.scanFormula(formula)) ?? new Parse.FormulaLiteralTerm(new Scan.FormulaIntegerToken(new FormulaSpan(0, 1), 0), "0");
+    }
+
+    public getValue(): number
+    {
+        const result = Evaluate.evaluateTerm(this.rootTerm, new Evaluate.FormulaEvaluationContext(this.character, this.gameData));
+
+        if (result.details.success)
+        {
+            return result.details.value;
+        }
+        else
+        {
+            return 0;
+        }
     }
 }
 
@@ -206,6 +242,13 @@ export default class CharacterSheet
                 this.attributes.set(attributeIdUpper, attribute);
                 this.stats.set(attributeIdUpper, attribute);
             }
+        }
+
+        for (const statId in gameData.derivedStatistics)
+        {
+            const statIdUpper = statId.toUpperCase();
+            const stat = new DerivedStat(statIdUpper, gameData.derivedStatistics[statId].formula, this, gameData);
+            this.stats.set(statIdUpper, stat);
         }
     }
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { IGameData } from '../models/GameData';
-import CharacterSheet, { UpgradableStat } from '../models/CharacterSheet';
+import CharacterSheet, { type IStat, UpgradableStat } from '../models/CharacterSheet';
 import StatisticView from '../views/StatisticView.vue';
 import UpgradeRow from '../views/UpgradeRow.vue';
 import SheetBlock from '../views/SheetBlock.vue';
@@ -70,7 +70,7 @@ console.log(`Loaded game data ${gameData.dataVersion} for Emergent ${gameData.ga
       <!-- Derived Statistics -->
       <SheetBlock display-name="Derived">
         <div class="stat-row" v-for="derivedStatistic, derivedId in gameData.derivedStatistics">
-          <!--<StatisticView :stat="" />-->
+          <StatisticView :stat="ref(character.stats.get(derivedId as string) as IStat)" />
 
           <div class="stat-content">
             <h4 :title="`${derivedStatistic.displayDescription} (${derivedId} = ${derivedStatistic.formula})`">{{ derivedStatistic.displayName }}</h4>
