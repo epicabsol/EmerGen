@@ -1,0 +1,163 @@
+{
+    "gameVersion": "Beta2.1",
+    "dataVersion": "0.1.0",
+    "attributeLevelUpPoints": [
+        1, 1, 2, 3, 4, 4
+    ],
+    "skillLevelUpPoints": [
+        1, 1, 2, 2, 3, 4
+    ],
+    "attributeGroups": [
+        {
+            "displayName": "Body",
+            "attributes": {
+                "TEN": {
+                    "displayName": "Tenacity",
+                    "displayDescription": "TODO",
+                    "skills": {
+                        "STK": {
+                            "displayName": "Strike",
+                            "displayDescription": "Close combat and defense with fists, blades, bats, and other melee weapons."
+                        },
+                        "FOR": {
+                            "displayName": "Fortitude",
+                            "displayDescription": "Physically resisting poisons and disease, fatigue, holding your breath, and surviving environmental hazards."
+                        },
+                        "STH": {
+                            "displayName": "Strength",
+                            "displayDescription": "Applying direct force to objects, such as lifting, pulling, or breaking things, as well as an alternative Skill for unarmed combat."
+                        }
+                    }
+                },
+                "MOB": {
+                    "displayName": "Mobility",
+                    "displayDescription": "TODO",
+                    "skills": {
+                        "ATH": {
+                            "displayName": "Athletics",
+                            "displayDescription": "Sustained, strenuous movement like distance running, jumping, climbing, swimming, and surviving falls."
+                        },
+                        "AGI": {
+                            "displayName": "Agility",
+                            "displayDescription": "Quick, agile, complex movements, like running through underbrush, swinging from a bar, or running up a wall and catching a ledge."
+                        },
+                        "REF": {
+                            "displayName": "Reflex",
+                            "displayDescription": "Dodging hazards and attacks, as well as your reaction speed in tense situations."
+                        }
+                    }
+                },
+                "FIN": {
+                    "displayName": "Finesse",
+                    "displayDescription": "TODO",
+                    "skills": {
+                        "STL": {
+                            "displayName": "Stealth",
+                            "displayDescription": "Acting quietly, remaining hidden, sleight of hand, and lock picking."
+                        },
+                        "OPR": {
+                            "displayName": "Operation",
+                            "displayDescription": "Driving cars and other vehicles, using heavy machinery, and otherwise operating complex devices."
+                        },
+                        "COR": {
+                            "displayName": "Coordination",
+                            "displayDescription": "Fine motor Skills, hand-eye coordination, throwing weapons and objects accurately, and general manual dexterity."
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "displayName": "Mind",
+            "attributes": {
+                "INT": {
+                    "displayName": "Intellect",
+                    "displayDescription": "TODO",
+                    "skills": {
+                        "CRE": {
+                            "displayName": "Creativity",
+                            "displayDescription": "Artistic Skill, including the visual arts, writing, music, digital art, and crafting certain weapons and traps."
+                        },
+                        "SCI": {
+                            "displayName": "Science",
+                            "displayDescription": "Your scientific knowledge in fields such as biology, chemistry, physics, computer programming, and some advanced crafting."
+                        },
+                        "SOC": {
+                            "displayName": "Society",
+                            "displayDescription": "Your knowledge of soft sciences like history, sociology, psychology, art theory, and theater, as well as languages, seeing through lies, and your sense of poise and decorum."
+                        }
+                    }
+                },
+                "PRE": {
+                    "displayName": "Presence",
+                    "displayDescription": "TODO",
+                    "skills": {
+                        "PRS": {
+                            "displayName": "Persuasion",
+                            "displayDescription": "Convincing others to agree with you through logic, emotional appeal, or pity, and general public speaking and debate Skills."
+                        },
+                        "DEC": {
+                            "displayName": "Deception",
+                            "displayDescription": "Disguise, lying, and obscuring your real intentions with half-truths."
+                        },
+                        "ASR": {
+                            "displayName": "Assertion",
+                            "displayDescription": "Convincing others to do what you want through intimidation, pulling rank, force of personality, or other social pressure."
+                        }
+                    }
+                },
+                "WIT": {
+                    "displayName": "Wit",
+                    "displayDescription": "TODO",
+                    "skills": {
+                        "SRT": {
+                            "displayName": "Streetwise",
+                            "displayDescription": "Your ability to navigate an area, pick up on subtleties, follow tracks, get a feel for a situation, find basic items around your house, and perform basic first aid. A catch-all for street and survival Skills."
+                        },
+                        "FOC": {
+                            "displayName": "Focus",
+                            "displayDescription": "Your ability to remain calm under pressure, maintain intensive concentration, and resist fear and mental assaults."
+                        },
+                        "PRC": {
+                            "displayName": "Perception",
+                            "displayDescription": "Your ability to see what is hidden, uncover clues, examine areas, notice subtle changes in your environment, avoid becoming surprised, and use ranged weapons."
+                        }
+                    }
+                }
+            }
+        }
+        
+    ],
+    "derivedStatistics": {
+        "HEA": {
+            "displayName": "Health (Tenacity)",
+            "displayDescription": "Your Health is how much damage your character can take before going down.",
+            "formula": "(TEN*2)+10"
+        },
+        "INI": {
+            "displayName": "Initiative (Mobility)",
+            "displayDescription": "Your Initiative determines your acting order in Conflict, with higher numbers going first and lower numbers acting later.",
+            "formula": "MOB"
+        },
+        "CRT": {
+            "displayName": "Critical Damage (Finesse)",
+            "displayDescription": "Whenever you score a critical hit with an attack, deal extra damage equal to your Critical Damage.",
+            "formula": "FIN"
+        },
+        "CRF": {
+            "displayName": "Crafting Level (Intellect)",
+            "displayDescription": "Your Crafting Level determines what rank of weapon modifications your character can craft. Smart and powerful weapon modifications are key to effectively dealing with the adversaries your characters will face in battle. Full crafting rules can be found on page 267.",
+            "formula": "INT"
+        },
+        "INS": {
+            "displayName": "Inspiration (Presence)",
+            "displayDescription": "Your Inspiration represents your inherent charisma and ability to support your friends. Inspiration can be spent each week to clear other players’ stress, Strain Effects, or give inspiring speeches to bolster them in battle. You can also use it to get out of sticky social situations. Full rules for using Inspiration can be found on page 216.",
+            "formula": "PRE"
+        },
+        "SRC": {
+            "displayName": "Strain Resistance (Wit)",
+            "displayDescription": "As your character gains stress over the course of each game, they will occasionally have to roll to resist Strain, which causes a host of negative effects. Rolling to resist strain is a check that uses this number as its score. Strain is explained in full on page 214.",
+            "formula": "WIT+1"
+        }
+    }
+}
