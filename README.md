@@ -11,6 +11,7 @@ Project Goals
  - Character can be saved/loaded to JSON, resistant to game data updates
  - All stats and functionality of the official character sheet is implemented
  - All official content (power details, items, weapons, fears, etc) is implemented, but homebrew is also supported
+ - Creation mode with assistance for creating a starting character sheet (skill/attribute array checking)
 
 Non-Goals (For Now)
 -------------------

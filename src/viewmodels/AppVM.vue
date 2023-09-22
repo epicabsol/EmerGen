@@ -11,13 +11,16 @@ import * as Scan from '../models/FormulaScan';
 import * as Parse from '../models/FormulaParse';
 import * as Evaluate from '../models/FormulaEvaluate';
 import { nextTick, ref } from 'vue';
+import { saveAs } from "file-saver";
+import moment from "moment";
 
 const gameData = await async function() {
   const response = await fetch("GameData-Emergent.json");
   return await response.json() as IGameData;
 }();
 
-var character = new CharacterSheet(gameData);
+var character = ref(new CharacterSheet(gameData));
+character.value.anyValueChanged.addHandler(() => { /*if (lastUnsavedTime.value === null)*/ lastUnsavedTime.value = Date.now() - 1000; });
 const evaluationHistoryBottom = ref<HTMLElement | null>(null);
 
 
@@ -26,45 +29,98 @@ const evaluationHistory = ref(new Array<Evaluate.FormulaEvaluationResult>());
 
 function addEvaluation(formula: string)
 {
-  //const parse = Parse.parseFormula(formula, Scan.scanFormula(formula));
-  const evaluation = Evaluate.evaluateFormula(formula, new Evaluate.FormulaEvaluationContext(character, gameData));
-  //console.log(JSON.stringify(evaluation));
+  const evaluation = Evaluate.evaluateFormula(formula, new Evaluate.FormulaEvaluationContext(character.value, gameData));
   evaluationHistory.value.push(evaluation);
 
   nextTick(() => evaluationHistoryBottom.value?.scrollIntoView());
 }
 
+//
+// Saving & Loading
+//
+
+let lastUnsavedTime = ref<number | null>(null);
+let referenceTime = ref(Date.now());
+
+setInterval(() => referenceTime.value = Date.now(), 1000);
+
+function saveSheet()
+{
+  const data = character.value.serialize();
+  const blob = new Blob([data], { type: "text/plain;charset=utf-8" });
+  saveAs(blob, character.value.name.trim().length > 0 ? character.value.name + ".json" : "Character.json");
+  lastUnsavedTime.value = null;
+}
+
+async function loadSheet(event: Event)
+{
+  const input = event.target as HTMLInputElement;
+  const reader = new FileReader();
+  const file = input.files?.item(0);
+  if (file !== null && file !== undefined)
+  {
+    const text = await file.text();
+    character.value.deserialize(text);
+    lastUnsavedTime.value = null;
+  }
+}
+
+function lastSavedDisplayTime(): string
+{
+  if (lastUnsavedTime.value === null)
+  {
+    return "";
+  }
+  else
+  {
+    return moment(lastUnsavedTime.value).from(referenceTime.value);
+  }
+}
+
+
 console.log(`Loaded game data ${gameData.dataVersion} for Emergent ${gameData.gameVersion}.`);
 </script>
 <template>
   <div class="sheet">
-    <div>
-      <h2>Emergent Character Sheet</h2>
+    <div class="title-toolbar">
+      <h2 class="title-logo">Emergent Character Sheet</h2>
+
+      <div class="title-controls">
+        <span :class="{ 'unsaved-warning': true, 'hidden': lastUnsavedTime === null }">Unsaved changes from {{ lastSavedDisplayTime() }}</span>
+
+        <div class="title-buttons">
+          <label for="loadSheetFile" class="upload-button">Open...</label>
+          <input id="loadSheetFile" type="file" accept=".json" class="upload-invisible" @change="loadSheet">
+          <button @click="saveSheet">Save...</button>
+        </div>
+      </div>
     </div>
 
     <div class="sheet-blocks">
       <!-- Identity -->
       <SheetBlock display-name="Identity">
-        <label for="name">Name</label>
-        <input v-model="character.name" type="text" id="name" name="name" placeholder="Name"><br />
+        <div class="identity-table">
+          <label for="name">Name</label>
+          <input v-model="character.name" type="text" id="name" name="name" placeholder="Name">
 
-        <label for="pronouns">Pronouns</label>
-        <input v-model="character.pronouns" type="text" id="pronouns" name="pronouns" placeholder="Pronouns"><br />
+          <label for="pronouns">Pronouns</label>
+          <input v-model="character.pronouns" type="text" id="pronouns" name="pronouns" placeholder="Pronouns">
 
-        <label>Power</label>
-        <span>{{ character.powerId }}</span><br />
+          <label>Power</label>
+          <span>{{ character.powerId }}</span>
 
-        <label for="level">Level</label>
-        <input v-model="character.level" type="number" id="level" name="level"><br />
+          <label for="level">Level</label>
+          <input v-model="character.level" type="number" id="level" name="level">
 
-        <label for="age">Age</label>
-        <input v-model="character.age" type="number" id="age" name="age"><br />
+          <label for="age">Age</label>
+          <input v-model="character.age" type="number" id="age" name="age">
 
-        <label for="remainingWealth">Remaining Wealth</label>
-        <input v-model="character.wealthRemaining" type="number" id="remainingWealth" name="remainingWealth"><br />
+          <label for="remainingWealth">Remaining Wealth</label>
+          <input v-model="character.wealthRemaining" type="number" id="remainingWealth" name="remainingWealth">
 
-        <label for="weeklyWealth">Weekly Wealth</label>
-        <input v-model="character.wealthWeekly" type="number" id="weeklyWealth" name="weeklyWealth"><br />
+          <label for="weeklyWealth">Weekly Wealth</label>
+          <input v-model="character.wealthWeekly" type="number" id="weeklyWealth" name="weeklyWealth">
+        </div>
       </SheetBlock>
 
       <!-- Derived Statistics -->
@@ -115,6 +171,7 @@ console.log(`Loaded game data ${gameData.dataVersion} for Emergent ${gameData.ga
       </SheetBlock>
     </div>
 
+    <!-- Formula Evaluator -->
     <div class="sheet-content">
       <div class="evaluate-history">
         <div v-for="evaluation in evaluationHistory">
@@ -130,6 +187,93 @@ console.log(`Loaded game data ${gameData.dataVersion} for Emergent ${gameData.ga
 </template>
 
 <style scoped>
+.title-toolbar
+{
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+}
+
+.title-logo
+{
+  flex-grow: 1;
+}
+
+.title-controls
+{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.title-buttons
+{
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.title-buttons button
+{
+  margin: 2px;
+}
+
+.upload-button
+{
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.1);
+  margin: 2px;
+  border-radius: 2px;
+  padding: 2px 8px;
+  user-select: none;
+}
+
+.upload-button:active
+{
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.upload-button:hover
+{
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.upload-invisible
+{
+  position: absolute;
+  opacity: 0;
+  width: 0px;
+  height: 0px;
+}
+
+.unsaved-warning
+{
+  font-size: 0.9em;
+  color: rgba(160, 20, 20, 0.8);
+}
+
+.hidden
+{
+  opacity: 0;
+}
+
+.identity-table
+{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.identity-table > label
+{
+  text-align: right;
+  margin: 2px 4px;
+}
+
+.identity-table > input
+{
+  margin: 2px 4px;
+}
+
 .sheet
 {
   display: flex;
@@ -147,8 +291,8 @@ console.log(`Loaded game data ${gameData.dataVersion} for Emergent ${gameData.ga
   overflow-y: auto;
 
   display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
+  grid-template-columns: 1fr 1fr;
+  padding: 0 2rem;
 }
 
 .stat-row

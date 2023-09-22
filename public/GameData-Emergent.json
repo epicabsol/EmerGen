@@ -1,6 +1,6 @@
 {
     "gameVersion": "Beta2.1",
-    "dataVersion": "0.1.0",
+    "dataVersion": "0.1.1",
     "attributeLevelUpPoints": [
         1, 1, 2, 3, 4, 4
     ],
@@ -132,7 +132,7 @@
         "HEA": {
             "displayName": "Health (Tenacity)",
             "displayDescription": "Your Health is how much damage your character can take before going down.",
-            "formula": "(TEN*2)+10"
+            "formula": "(TEN*2)+20"
         },
         "INI": {
             "displayName": "Initiative (Mobility)",

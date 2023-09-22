@@ -4,6 +4,36 @@ import * as Scan from "./FormulaScan";
 import * as Parse from "./FormulaParse";
 import * as Evaluate from "./FormulaEvaluate";
 
+export type PropertyChangeHandler<TValue> = (oldValue: TValue, newValue: TValue) => void;
+export type ChangeHandler = () => void;
+
+export class Event<T extends ((...args: any[]) => void)>
+{
+    public handlers = new Array<T>();
+
+    public addHandler(handler: T)
+    {
+        this.handlers.push(handler);
+    }
+
+    public removeHandler(handler: T)
+    {
+        const index = this.handlers.indexOf(handler);
+        if (index >= 0)
+        {
+            this.handlers.splice(index, 1);
+        }
+    }
+
+    public invoke(...args: Parameters<T>)
+    {
+        for (let i = 0; i < this.handlers.length; i++)
+        {
+            this.handlers[i](args);
+        }
+    }
+}
+
 export interface IStat
 {
     id: string;
@@ -15,7 +45,10 @@ export interface IStat
  */
 export class UpgradableStat implements IStat
 {
-    id: string;
+    public upgradeLevelChanged = new Event<PropertyChangeHandler<number>>();
+    public upgradePointsChanged = new Event<PropertyChangeHandler<number>>();
+
+    public readonly id: string;
 
     /**
      * How many levels this stat has been upgraded.
@@ -44,18 +77,23 @@ export class UpgradableStat implements IStat
     {
         if (this.upgradeLevel < this.levelUpPoints.length)
         {
+            const oldUpgradePoints = this.upgradePoints;
             this.upgradePoints += 1;
 
             if (this.upgradePoints >= this.levelUpPoints[this.upgradeLevel])
             {
                 this.upgradeLevel += 1;
                 this.upgradePoints = 0;
+
+                this.upgradeLevelChanged.invoke(this.upgradeLevel - 1, this.upgradeLevel);
             }
+            this.upgradePointsChanged.invoke(oldUpgradePoints, this.upgradePoints);
         }
     }
 
     public tryRemoveUpgradePoint()
     {
+        const oldUpgradePoints = this.upgradePoints;
         if (this.upgradePoints > 0)
         {
             this.upgradePoints -= 1;
@@ -64,7 +102,11 @@ export class UpgradableStat implements IStat
         {
             this.upgradeLevel -= 1;
             this.upgradePoints = this.levelUpPoints[this.upgradeLevel] - 1;
+
+            this.upgradeLevelChanged.invoke(this.upgradeLevel + 1, this.upgradeLevel);
         }
+
+        this.upgradePointsChanged.invoke(oldUpgradePoints, this.upgradePoints);
     }
 
     public getValue(): number
@@ -165,8 +207,30 @@ export class StatisticEvaluation
     }
 }
 
+interface IPersistedCharacterSheet
+{
+    readonly name: string;
+    readonly pronouns: string;
+    readonly powerId: string;
+    readonly level: number;
+    readonly age: number;
+    readonly wealthWeekly: number;
+    readonly wealthRemaining: number;
+
+    readonly attributes: { [id: string]: IPersistedCharacterStat };
+    readonly skills: { [id: string]: IPersistedCharacterStat };
+}
+
+interface IPersistedCharacterStat
+{
+    readonly upgradeLevel: number;
+    readonly upgradePoints: number;
+}
+
 export default class CharacterSheet
 {
+    public anyValueChanged = new Event<ChangeHandler>();
+
     //
     // Identity
     //
@@ -229,13 +293,19 @@ export default class CharacterSheet
             {
                 const attributeIdUpper = attributeId.toUpperCase();
                 const attribute = new CharacterAttribute(attributeIdUpper, gameData.attributeLevelUpPoints);
+                attribute.upgradeLevelChanged.addHandler(() => this.onPropertyChanged());
+                attribute.upgradePointsChanged.addHandler(() => this.onPropertyChanged());
 
                 // Create child skills based on the game data
                 for (const skillId in attributeGroup.attributes[attributeIdUpper].skills)
                 {
                     const skillIdUpper = skillId.toUpperCase();
                     const skill = new CharacterSkill(skillIdUpper, gameData.skillLevelUpPoints, attribute);
+                    skill.upgradeLevelChanged.addHandler(() => this.onPropertyChanged());
+                    skill.upgradePointsChanged.addHandler(() => this.onPropertyChanged());
+
                     attribute.skills.set(skillIdUpper, skill);
+                    this.skills.set(skillIdUpper, skill);
                     this.stats.set(skillIdUpper, skill);
                 }
 
@@ -252,6 +322,84 @@ export default class CharacterSheet
         }
     }
 
+    public serialize(): string
+    {
+        const attributes: { [id: string]: IPersistedCharacterStat } = { };
+        for (const attribute of this.attributes.values())
+        {
+            attributes[attribute.id] =
+            {
+                upgradeLevel: attribute.upgradeLevel,
+                upgradePoints: attribute.upgradePoints,
+            };
+        }
+
+        const skills: { [id: string]: IPersistedCharacterStat } = { };
+        for (const skill of this.skills.values())
+        {
+            skills[skill.id] =
+            {
+                upgradeLevel: skill.upgradeLevel,
+                upgradePoints: skill.upgradePoints,
+            };
+        }
+
+
+        const persistentData: IPersistedCharacterSheet =
+        {
+            name: this.name,
+            pronouns: this.pronouns, 
+            powerId: this.powerId,
+            level: this.level,
+            age: this.age,
+            wealthWeekly: this.wealthWeekly,
+            wealthRemaining: this.wealthRemaining,
+
+            attributes: attributes,
+            skills: skills,
+        };
+        return JSON.stringify(persistentData);
+    }
+
+    public deserialize(data: string)
+    {
+        const persistentData = JSON.parse(data) as IPersistedCharacterSheet;
+
+        this.name = persistentData.name;
+        this.pronouns = persistentData.pronouns;
+        this.powerId = persistentData.powerId;
+        this.level = persistentData.level;
+        this.age = persistentData.age;
+        this.wealthWeekly = persistentData.wealthWeekly;
+        this.wealthRemaining = persistentData.wealthRemaining;
+
+        for (const skillId in persistentData.skills)
+        {
+            const skill = this.skills.get(skillId);
+            if (skill !== undefined)
+            {
+                skill.upgradeLevel = persistentData.skills[skillId].upgradeLevel;
+                skill.upgradePoints = persistentData.skills[skillId].upgradePoints;
+            }
+        }
+
+        for (const attributeId in persistentData.attributes)
+        {
+            const attribute = this.attributes.get(attributeId);
+            if (attribute !== undefined)
+            {
+                attribute.upgradeLevel = persistentData.attributes[attributeId].upgradeLevel;
+                attribute.upgradePoints = persistentData.attributes[attributeId].upgradePoints;
+            }
+        }
+
+        this.anyValueChanged.invoke();
+    }
+
+    public onPropertyChanged(_?: any, __?: any)
+    {
+        this.anyValueChanged.invoke();
+    }
 
     public getStatistic(id: string): IStat | undefined
     {
