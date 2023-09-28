@@ -115,7 +115,7 @@ export function scanFormula(formula: string): FormulaToken[]
         {
 
         }
-        if (character == '(')
+        else if (character == '(')
         {
             result.push(makeBasicToken(FormulaTokenType.leftParenthesis));
         }
@@ -149,7 +149,7 @@ export function scanFormula(formula: string): FormulaToken[]
                 && formula[currentIndex] == 'd'
                 && isDigit(formula[currentIndex + 1]))
             {
-                currentIndex += 1; // Consume the 'd' and move the second number
+                currentIndex += 1; // Consume the 'd' and move to the second number
                 const originalStartIndex = startIndex;
                 startIndex = currentIndex;
                 const secondNumber = readInteger();

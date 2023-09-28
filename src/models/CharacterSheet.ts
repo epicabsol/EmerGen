@@ -41,7 +41,7 @@ export interface IStat
 }
 
 /**
- * A stat that can be upgraded by adding (and possible removing) upgrade points.
+ * A stat that can be upgraded by adding (and possibly removing) upgrade points.
  */
 export class UpgradableStat implements IStat
 {
@@ -142,6 +142,9 @@ export class CharacterAttribute extends UpgradableStat
     }
 }
 
+/**
+ * A stat whose value is derived from the value of other stats.
+ */
 export class DerivedStat implements IStat
 {
     public readonly id: string;
@@ -206,6 +209,11 @@ export class StatisticEvaluation
         }
     }
 }
+
+
+//
+// 'Persisted' interfaces that define the JSON format for serialized character sheets
+//
 
 interface IPersistedCharacterSheet
 {
