@@ -3,6 +3,7 @@ import { FormulaSpan } from "./Formula";
 import * as Scan from "./FormulaScan";
 import * as Parse from "./FormulaParse";
 import * as Evaluate from "./FormulaEvaluate";
+import * as Check from "./SkillCheck";
 
 export type PropertyChangeHandler<TValue> = (oldValue: TValue, newValue: TValue) => void;
 export type ChangeHandler = () => void;
@@ -38,6 +39,9 @@ export interface IStat
 {
     id: string;
     getValue(): number;
+
+    readonly displayName: string;
+    readonly displayDescription: string;
 }
 
 /**
@@ -49,6 +53,8 @@ export class UpgradableStat implements IStat
     public upgradePointsChanged = new Event<PropertyChangeHandler<number>>();
 
     public readonly id: string;
+    public readonly displayName: string;
+    public readonly displayDescription: string;
 
     /**
      * How many levels this stat has been upgraded.
@@ -67,10 +73,12 @@ export class UpgradableStat implements IStat
      */
     public readonly levelUpPoints: number[];
 
-    public constructor(id: string, levelUpPoints: number[])
+    public constructor(id: string, levelUpPoints: number[], displayName: string, displayDescription: string)
     {
         this.id = id;
         this.levelUpPoints = levelUpPoints;
+        this.displayName = displayName;
+        this.displayDescription = displayDescription;
     }
 
     public tryAddUpgradePoint()
@@ -119,9 +127,9 @@ export class CharacterSkill extends UpgradableStat
 {
     public readonly parentAttribute: CharacterAttribute;
 
-    public constructor(id: string, levelUpPoints: number[], parentAttribute: CharacterAttribute)
+    public constructor(id: string, levelUpPoints: number[], displayName: string, displayDescription: string, parentAttribute: CharacterAttribute)
     {
-        super(id, levelUpPoints);
+        super(id, levelUpPoints, displayName, displayDescription);
 
         this.parentAttribute = parentAttribute;
     }
@@ -136,9 +144,9 @@ export class CharacterAttribute extends UpgradableStat
 {
     public skills = new Map<string, CharacterSkill>();
 
-    public constructor(id: string, levelUpPoints: number[])
+    public constructor(id: string, levelUpPoints: number[], displayName: string, displayDescription: string)
     {
-        super(id, levelUpPoints);
+        super(id, levelUpPoints, displayName, displayDescription);
     }
 }
 
@@ -149,14 +157,18 @@ export class DerivedStat implements IStat
 {
     public readonly id: string;
     public readonly formula: string;
+    public readonly displayName: string;
+    public readonly displayDescription: string;
     private readonly character: CharacterSheet;
     private readonly gameData: IGameData;
     private readonly rootTerm: Parse.FormulaTerm;
 
-    public constructor(id: string, formula: string, character: CharacterSheet, gameData: IGameData)
+    public constructor(id: string, formula: string, displayName: string, displayDescription: string, character: CharacterSheet, gameData: IGameData)
     {
         this.id = id;
         this.formula = formula;
+        this.displayName = displayName;
+        this.displayDescription = displayDescription;
         this.character = character;
         this.gameData = gameData;
         this.rootTerm = Parse.parseFormula(formula, Scan.scanFormula(formula)) ?? new Parse.FormulaLiteralTerm(new Scan.FormulaIntegerToken(new FormulaSpan(0, 1), 0), "0");
@@ -238,6 +250,7 @@ interface IPersistedCharacterStat
 export default class CharacterSheet
 {
     public anyValueChanged = new Event<ChangeHandler>();
+    public evaluationContext: Evaluate.FormulaEvaluationContext;
 
     //
     // Identity
@@ -299,16 +312,18 @@ export default class CharacterSheet
             const attributeGroup = gameData.attributeGroups[i];
             for (const attributeId in attributeGroup.attributes)
             {
+                const attributeData = attributeGroup.attributes[attributeId];
                 const attributeIdUpper = attributeId.toUpperCase();
-                const attribute = new CharacterAttribute(attributeIdUpper, gameData.attributeLevelUpPoints);
+                const attribute = new CharacterAttribute(attributeIdUpper, gameData.attributeLevelUpPoints, attributeData.displayName, attributeData.displayDescription);
                 attribute.upgradeLevelChanged.addHandler(() => this.onPropertyChanged());
                 attribute.upgradePointsChanged.addHandler(() => this.onPropertyChanged());
 
                 // Create child skills based on the game data
-                for (const skillId in attributeGroup.attributes[attributeIdUpper].skills)
+                for (const skillId in attributeData.skills)
                 {
+                    const skillData = attributeData.skills[skillId];
                     const skillIdUpper = skillId.toUpperCase();
-                    const skill = new CharacterSkill(skillIdUpper, gameData.skillLevelUpPoints, attribute);
+                    const skill = new CharacterSkill(skillIdUpper, gameData.skillLevelUpPoints, skillData.displayName, skillData.displayDescription, attribute);
                     skill.upgradeLevelChanged.addHandler(() => this.onPropertyChanged());
                     skill.upgradePointsChanged.addHandler(() => this.onPropertyChanged());
 
@@ -324,10 +339,13 @@ export default class CharacterSheet
 
         for (const statId in gameData.derivedStatistics)
         {
+            const statData = gameData.derivedStatistics[statId];
             const statIdUpper = statId.toUpperCase();
-            const stat = new DerivedStat(statIdUpper, gameData.derivedStatistics[statId].formula, this, gameData);
+            const stat = new DerivedStat(statIdUpper, statData.formula, statData.displayName, statData.displayDescription, this, gameData);
             this.stats.set(statIdUpper, stat);
         }
+
+        this.evaluationContext = new Evaluate.FormulaEvaluationContext(this, gameData);
     }
 
     public serialize(): string
@@ -437,5 +455,24 @@ export default class CharacterSheet
     public evaluateFormula(formula: string)
     {
         
+    }
+
+    public rollSkillCheck(statId: string, baseDifficulty: Check.SkillCheckDifficulty, netAdvantage: number, netBonus: number): Check.SkillCheck | undefined
+    {
+        const stat = this.getStatistic(statId);
+
+        if (stat != undefined)
+        {
+            const statEvaluation = this.evaluateStatistic(statId);
+            const effectiveDifficulty = Check.getEffectiveDifficulty(baseDifficulty, netAdvantage);
+
+            const dieRoll = this.evaluationContext.rollDie(Check.getDifficultyDieSides(effectiveDifficulty));
+
+            return new Check.SkillCheck(statId, baseDifficulty, netAdvantage, dieRoll, statEvaluation.finalValue, netBonus);
+        }
+        else
+        {
+            return undefined;
+        }
     }
 }

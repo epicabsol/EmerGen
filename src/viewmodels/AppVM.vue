@@ -2,10 +2,13 @@
 import type { IGameData } from '../models/GameData';
 import CharacterSheet, { type IStat, UpgradableStat } from '../models/CharacterSheet';
 import StatisticView from '../views/StatisticView.vue';
+import Modal from '../views/Modal.vue';
 import UpgradeRow from '../views/UpgradeRow.vue';
 import SheetBlock from '../views/SheetBlock.vue';
 import EvaluationToolbar from '../views/EvaluationToolbar.vue';
 import EvaluatedFormulaRow from '../views/formula/EvaluatedFormulaRow.vue';
+import NumberIncrementDecrement from '@/views/NumberIncrementDecrement.vue';
+import SkillCheckForm from '../views/check/SkillCheckForm.vue';
 //import * as Formula from '../models/Formula';
 import * as Scan from '../models/FormulaScan';
 import * as Parse from '../models/FormulaParse';
@@ -23,7 +26,28 @@ var character = ref(new CharacterSheet(gameData));
 character.value.anyValueChanged.addHandler(() => { /*if (lastUnsavedTime.value === null)*/ lastUnsavedTime.value = Date.now() - 1000; });
 const evaluationHistoryBottom = ref<HTMLElement | null>(null);
 
+//
+// Skill Checks
+//
 
+const skillCheckModalVisible = ref(true);
+
+
+/**
+ * Shows the skill check dialog with the given stat selected in the check creation form.
+ * @param statId 
+ */
+function showSkillCheckSetup(statId: string)
+{
+  skillCheckModalVisible.value = true;
+
+  // TEMP: Auto roll the check for now until the creation form is implemented
+  // TODO: Roll skill check for statId
+}
+
+//
+// Fomula Evaluator
+//
 
 const evaluationHistory = ref(new Array<Evaluate.FormulaEvaluationResult>());
 
@@ -89,6 +113,7 @@ console.log(`Loaded game data ${gameData.dataVersion} for Emergent ${gameData.ga
         <span :class="{ 'unsaved-warning': true, 'hidden': lastUnsavedTime === null }">Unsaved changes from {{ lastSavedDisplayTime() }}</span>
 
         <div class="title-buttons">
+          <button @click="skillCheckModalVisible = true">Skill Checks</button>
           <label for="loadSheetFile" class="upload-button">Open...</label>
           <input id="loadSheetFile" type="file" accept=".json" class="upload-invisible" @change="loadSheet">
           <button @click="saveSheet">Save...</button>
@@ -126,10 +151,13 @@ console.log(`Loaded game data ${gameData.dataVersion} for Emergent ${gameData.ga
       <!-- Derived Statistics -->
       <SheetBlock display-name="Derived">
         <div class="stat-row" v-for="derivedStatistic, derivedId in gameData.derivedStatistics">
-          <StatisticView :stat="ref(character.stats.get(derivedId as string) as IStat)" />
+          <StatisticView :stat="(character.stats.get(derivedId as string) as IStat)" />
 
           <div class="stat-content">
-            <h4 :title="`${derivedStatistic.displayDescription} (${derivedId} = ${derivedStatistic.formula})`">{{ derivedStatistic.displayName }}</h4>
+            <div class="stat-title">
+              <h4 :title="`${derivedStatistic.displayDescription} (${derivedId} = ${derivedStatistic.formula})`">{{ derivedStatistic.displayName }}</h4>
+              <button @click="showSkillCheckSetup(derivedId as string)">Roll Check...</button>
+            </div>
             <div class="stat-subtitle">
               = {{ derivedStatistic.formula }}
             </div>
@@ -142,10 +170,13 @@ console.log(`Loaded game data ${gameData.dataVersion} for Emergent ${gameData.ga
         <div v-for="attribute, attributeId in attributeGroup.attributes">
 
           <div class="stat-row">
-            <StatisticView :stat="ref((character.attributes.get(attributeId as string) as UpgradableStat))" />
+            <StatisticView :stat="(character.attributes.get(attributeId as string) as UpgradableStat)" />
 
             <div class="stat-content">
-              <h3 :title="attribute.displayDescription">{{ attribute.displayName }}</h3>
+              <div class="stat-title">
+                <h3 :title="attribute.displayDescription">{{ attribute.displayName }}</h3>
+                <button @click="showSkillCheckSetup(attributeId as string)">Roll Check...</button>
+              </div>
 
               <div class="stat-subtitle">
                 <UpgradeRow :stat="ref((character.attributes.get(attributeId as string) as UpgradableStat))"></UpgradeRow>
@@ -156,10 +187,13 @@ console.log(`Loaded game data ${gameData.dataVersion} for Emergent ${gameData.ga
           <div v-for="skill, skillId in attribute.skills">
 
             <div class="stat-row stat-child">
-              <StatisticView :stat="ref((character.attributes.get(attributeId as string)?.skills.get(skillId as string) as UpgradableStat))" />
+              <StatisticView :stat="(character.attributes.get(attributeId as string)?.skills.get(skillId as string) as UpgradableStat)" />
 
               <div class="stat-content">
-                <h4 :title="skill.displayDescription">{{ skill.displayName }}</h4>
+                <div class="stat-title">
+                  <h4 :title="skill.displayDescription">{{ skill.displayName }}</h4>
+                  <button @click="showSkillCheckSetup(skillId as string)">Roll Check...</button>
+                </div>
 
                 <div class="stat-subtitle">
                   <UpgradeRow :stat="ref((character.attributes.get(attributeId as string)?.skills.get(skillId as string) as UpgradableStat))"></UpgradeRow>
@@ -182,6 +216,13 @@ console.log(`Loaded game data ${gameData.dataVersion} for Emergent ${gameData.ga
 
       <EvaluationToolbar v-on:submit="addEvaluation" />
     </div>
+
+    <!-- Skill Check Modal -->
+    <Modal v-model="skillCheckModalVisible" :auto-dismiss="true">
+      <h2>Skill Checks</h2>
+
+      <SkillCheckForm :game-data="gameData" :character-sheet="character" />
+    </Modal>
   </div>
 
 </template>
@@ -317,6 +358,28 @@ console.log(`Loaded game data ${gameData.dataVersion} for Emergent ${gameData.ga
 {
   flex-grow: 1;
   padding: 2px;
+}
+
+.stat-title
+{
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.stat-title > *:first-child
+{
+  flex-grow: 1;
+}
+
+.stat-title > *:not(:first-child)
+{
+  visibility: hidden;
+}
+
+.stat-row:hover .stat-title > *:not(:first-child)
+{
+  visibility: visible;
 }
 
 .stat-subtitle
