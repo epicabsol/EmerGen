@@ -16,6 +16,7 @@ import * as Evaluate from '../models/FormulaEvaluate';
 import { nextTick, ref } from 'vue';
 import { saveAs } from "file-saver";
 import moment from "moment";
+import SkillCheckWindowVM from "@/viewmodels/SkillCheckWindowVM";
 
 const gameData = await async function() {
   const response = await fetch("GameData-Emergent.json");
@@ -30,8 +31,7 @@ const evaluationHistoryBottom = ref<HTMLElement | null>(null);
 // Skill Checks
 //
 
-const skillCheckModalVisible = ref(true);
-
+const skillCheckWindow = ref(new SkillCheckWindowVM(gameData, character.value));
 
 /**
  * Shows the skill check dialog with the given stat selected in the check creation form.
@@ -39,10 +39,8 @@ const skillCheckModalVisible = ref(true);
  */
 function showSkillCheckSetup(statId: string)
 {
-  skillCheckModalVisible.value = true;
-
-  // TEMP: Auto roll the check for now until the creation form is implemented
-  // TODO: Roll skill check for statId
+  skillCheckWindow.value.skillStatId = statId;
+  skillCheckWindow.value.visible = true;
 }
 
 //
@@ -113,7 +111,7 @@ console.log(`Loaded game data ${gameData.dataVersion} for Emergent ${gameData.ga
         <span :class="{ 'unsaved-warning': true, 'hidden': lastUnsavedTime === null }">Unsaved changes from {{ lastSavedDisplayTime() }}</span>
 
         <div class="title-buttons">
-          <button @click="skillCheckModalVisible = true">Skill Checks</button>
+          <button @click="skillCheckWindow.visible = true">Skill Checks</button>
           <label for="loadSheetFile" class="upload-button">Open...</label>
           <input id="loadSheetFile" type="file" accept=".json" class="upload-invisible" @change="loadSheet">
           <button @click="saveSheet">Save...</button>
@@ -218,10 +216,10 @@ console.log(`Loaded game data ${gameData.dataVersion} for Emergent ${gameData.ga
     </div>
 
     <!-- Skill Check Modal -->
-    <Modal v-model="skillCheckModalVisible" :auto-dismiss="true">
+    <Modal v-model="skillCheckWindow.visible" :auto-dismiss="true">
       <h2>Skill Checks</h2>
 
-      <SkillCheckForm :game-data="gameData" :character-sheet="character" />
+      <SkillCheckForm :vm="skillCheckWindow" />
     </Modal>
   </div>
 

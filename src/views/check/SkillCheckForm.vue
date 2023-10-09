@@ -6,23 +6,19 @@ import { type IGameData } from '@/models/GameData';
 import StatisticView from '../StatisticView.vue';
 import Dropdown from "../Dropdown.vue";
 import * as Check from "../../models/SkillCheck";
+import SkillCheckWindowVM from "@/viewmodels/SkillCheckWindowVM";
 
 const props = defineProps<{
-    gameData: IGameData,
-    characterSheet: CharacterSheet,
+    vm: SkillCheckWindowVM,
 }>();
 
-const skillStatId = ref("");
 const hoverStatId = ref("");
 const skillDropdown = ref<typeof Dropdown | null>(null);
 
-const selectedDifficulty = ref(Check.SkillCheckDifficulty.moderate);
 const hoverDifficulty = ref<Check.SkillCheckDifficulty | null>(null);
 
-const extraAdvantage = ref(0);
-const extraBonus = ref(0);
-
-const effectiveDifficulty = computed(() => Check.getEffectiveDifficulty(selectedDifficulty.value, extraAdvantage.value));
+const effectiveDifficulty = computed(() => props.vm.getEffectiveDifficulty());
+const effectiveSkillValue = computed(() => props.vm.getEffectiveSkillValue());
 
 class NoStat implements IStat
 {
@@ -38,7 +34,7 @@ class NoStat implements IStat
 
 function statClicked(statId: string)
 {
-    skillStatId.value = statId;
+    props.vm.skillStatId = statId;
     skillDropdown.value?.setVisible(false);
 }
 
@@ -59,11 +55,11 @@ function getHoverStat(): IStat
 {
     if (hoverStatId.value.length > 0)
     {
-        return props.characterSheet.getStatistic(hoverStatId.value) ?? emptyStat;
+        return props.vm.characterSheet.getStatistic(hoverStatId.value) ?? emptyStat;
     }
-    else if (skillStatId.value.length > 0)
+    else if (props.vm.skillStatId.length > 0)
     {
-        return props.characterSheet.getStatistic(skillStatId.value) ?? emptyStat;
+        return props.vm.characterSheet.getStatistic(props.vm.skillStatId) ?? emptyStat;
     }
     else
     {
@@ -71,14 +67,9 @@ function getHoverStat(): IStat
     }
 }
 
-function getEffectiveSkillValue(): number
-{
-    return props.characterSheet.evaluateStatistic(skillStatId.value).finalValue + extraBonus.value;
-}
-
 function difficultyClicked(difficulty: Check.SkillCheckDifficulty)
 {
-    selectedDifficulty.value = difficulty;
+    props.vm.selectedDifficulty = difficulty;
 }
 
 function difficultyMouseOver(difficulty: Check.SkillCheckDifficulty)
@@ -127,17 +118,17 @@ const emptyStat = new NoStat();
                     </template>
 
                     <div class="checkform-skillcontainer">
-                        <div v-for="attributeGroup in gameData.attributeGroups">
+                        <div v-for="attributeGroup in vm.gameData.attributeGroups">
                             <div class="checkform-attributegroup">
                                 {{ attributeGroup.displayName }}
                             </div>
                             <template v-for="attribute, attributeId in attributeGroup.attributes">
-                                <div :class="{ 'checkform-skillchoice': true, 'active': hoverStatId.length > 0 ? (attributeId == hoverStatId) : (attributeId == skillStatId) }" @click="statClicked(attributeId as string)" @mouseover="statMouseOver(attributeId as string)" @mouseout="statMouseOut(attributeId as string)">
-                                    <StatisticView mini :stat="(characterSheet.getStatistic(attributeId as string) as IStat)" :title="attribute.displayName + '\n\n' + attribute.displayDescription" />
+                                <div :class="{ 'checkform-skillchoice': true, 'active': hoverStatId.length > 0 ? (attributeId == hoverStatId) : (attributeId == vm.skillStatId) }" @click="statClicked(attributeId as string)" @mouseover="statMouseOver(attributeId as string)" @mouseout="statMouseOut(attributeId as string)">
+                                    <StatisticView mini :stat="(vm.characterSheet.getStatistic(attributeId as string) as IStat)" :title="attribute.displayName + '\n\n' + attribute.displayDescription" />
                                 </div>
 
-                                <div v-for="skill, skillId in attribute.skills" :class="{ 'checkform-indent': true, 'checkform-skillchoice': true, 'active': hoverStatId.length > 0 ? (skillId == hoverStatId) : (skillId == skillStatId) }" @click="statClicked(skillId as string)" @mouseover="statMouseOver(skillId as string)" @mouseout="statMouseOut(skillId as string)">
-                                    <StatisticView mini :stat="(characterSheet.getStatistic(skillId as string) as IStat)" :title="skill.displayName + '\n\n' + skill.displayDescription" />
+                                <div v-for="skill, skillId in attribute.skills" :class="{ 'checkform-indent': true, 'checkform-skillchoice': true, 'active': hoverStatId.length > 0 ? (skillId == hoverStatId) : (skillId == vm.skillStatId) }" @click="statClicked(skillId as string)" @mouseover="statMouseOver(skillId as string)" @mouseout="statMouseOut(skillId as string)">
+                                    <StatisticView mini :stat="(vm.characterSheet.getStatistic(skillId as string) as IStat)" :title="skill.displayName + '\n\n' + skill.displayDescription" />
                                 </div>
                             </template>
                         </div>
@@ -145,8 +136,8 @@ const emptyStat = new NoStat();
                             <div class="checkform-attributegroup">
                                 Derived
                             </div>
-                            <div v-for="derived, derivedId in gameData.derivedStatistics" :class="{ 'checkform-skillchoice': true, 'active': hoverStatId.length > 0 ? (derivedId == hoverStatId) : (derivedId == skillStatId) }" @click="statClicked(derivedId as string)" @mouseover="statMouseOver(derivedId as string)" @mouseout="statMouseOut(derivedId as string)">
-                                <StatisticView mini :stat="(characterSheet.getStatistic(derivedId as string) as IStat)" :title="derived.displayName + '\n\n' + derived.displayDescription" />
+                            <div v-for="derived, derivedId in vm.gameData.derivedStatistics" :class="{ 'checkform-skillchoice': true, 'active': hoverStatId.length > 0 ? (derivedId == hoverStatId) : (derivedId == vm.skillStatId) }" @click="statClicked(derivedId as string)" @mouseover="statMouseOver(derivedId as string)" @mouseout="statMouseOut(derivedId as string)">
+                                <StatisticView mini :stat="(vm.characterSheet.getStatistic(derivedId as string) as IStat)" :title="derived.displayName + '\n\n' + derived.displayDescription" />
                             </div>
                         </div>
                     </div>
@@ -156,24 +147,24 @@ const emptyStat = new NoStat();
                 <br />
                 
                 Extra Bonus:
-                <NumberIncrementDecrement v-model="extraBonus" :change-increment="1" />
+                <NumberIncrementDecrement v-model="vm.extraBonus" :change-increment="1" />
             </div>
 
             <div class="checkform-column">
                 <h3>Difficulty</h3>
                 <div class="checkform-tabs">
-                    <div v-for="difficulty in Check.allDifficulties" :class="{ 'checkform-difficultychoice': true, 'active': hoverDifficulty !== null ? (difficulty == hoverDifficulty) : (difficulty == selectedDifficulty) }" @click="difficultyClicked(difficulty)" @mouseover="difficultyMouseOver(difficulty)" @mouseout="difficultyMouseOut(difficulty)">
+                    <div v-for="difficulty in Check.allDifficulties" :class="{ 'checkform-difficultychoice': true, 'active': hoverDifficulty !== null ? (difficulty == hoverDifficulty) : (difficulty == vm.selectedDifficulty) }" @click="difficultyClicked(difficulty)" @mouseover="difficultyMouseOver(difficulty)" @mouseout="difficultyMouseOut(difficulty)">
                         {{ Check.getDifficultyDieSides(difficulty) }}
                     </div>
                 </div>
                 <h3 class="checkform-difficulty">
-                    {{ Check.SkillCheckDifficulty[hoverDifficulty ?? selectedDifficulty] }} <span class="checkform-difficultydie">d{{ Check.getDifficultyDieSides(hoverDifficulty ?? selectedDifficulty) }}</span>
+                    {{ Check.SkillCheckDifficulty[hoverDifficulty ?? vm.selectedDifficulty] }} <span class="checkform-difficultydie">d{{ Check.getDifficultyDieSides(hoverDifficulty ?? vm.selectedDifficulty) }}</span>
                 </h3>
 
                 <br />
 
                 Extra Advantage:
-                <NumberIncrementDecrement v-model="extraAdvantage" :change-increment="1" />
+                <NumberIncrementDecrement v-model="vm.extraAdvantage" :change-increment="1" />
             </div>
         </div>
 
@@ -181,7 +172,7 @@ const emptyStat = new NoStat();
             <div class="checkform-bottomcolumn">
                 <div class="checkform-centeredrow">
                     <h1 class="checkform-valuebox">
-                        {{ skillStatId.length > 0 ? getEffectiveSkillValue() : '&nbsp' }}
+                        {{ vm.skillStatId.length > 0 ? effectiveSkillValue : '&nbsp' }}
 
                     </h1>
                 </div>
