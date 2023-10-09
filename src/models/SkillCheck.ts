@@ -167,18 +167,18 @@ export class SkillCheck
         }
         else
         {
-            return this.dieRoll - skillValue;
+            return skillValue - this.dieRoll;
         }
     }
 
     /**
-     * Determines the level of critical success/failure of this check.
+     * Determines the level of critical success of this check.
      * 
-     * A standard success/failure would be 0, a double critical success would be 2, and a double critical failure would be -2.
+     * A standard success/failure would return 0, while a double critical success would return 2.
      */
     public getCriticalDegree(): number
     {
-        return Math.trunc(this.getSuccessDegree() / 5);
+        return this.getSuccessDegree() > 0 ? Math.trunc(this.getSuccessDegree() / 5) : 0;
     }
 
     /**

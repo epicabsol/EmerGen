@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, nextTick } from 'vue';
 import NumberIncrementDecrement from '../NumberIncrementDecrement.vue';
 import CharacterSheet, { type IStat } from '@/models/CharacterSheet';
 import { type IGameData } from '@/models/GameData';
@@ -18,6 +18,7 @@ const hoverStatId = ref("");
 const skillDropdown = ref<typeof Dropdown | null>(null);
 
 const hoverDifficulty = ref<Check.SkillCheckDifficulty | null>(null);
+const checkHistoryBottom = ref<HTMLElement | null>(null);
 
 const effectiveDifficulty = computed(() => props.vm.getEffectiveDifficulty());
 const effectiveSkillValue = computed(() => props.vm.getEffectiveSkillValue());
@@ -88,6 +89,12 @@ function difficultyMouseOut(difficulty: Check.SkillCheckDifficulty)
     }
 }
 
+function rollCheck()
+{
+    props.vm.rollCheck();
+    nextTick(() => checkHistoryBottom.value?.scrollIntoView());
+}
+
 const emptyStat = new NoStat();
 
 </script>
@@ -156,7 +163,7 @@ const emptyStat = new NoStat();
                 <br />
                 Details:
 
-                <ModificationView v-if="vm.skillStatId.length > 0" :title="'Base ' + vm.characterSheet.getStatistic(vm.skillStatId).displayName" :source="vm.characterSheet.name" :effect="vm.characterSheet.evaluateStatistic(vm.skillStatId).baseValue.toString()" />
+                <ModificationView v-if="vm.skillStatId.length > 0" :title="'Base ' + vm.characterSheet.getStatistic(vm.skillStatId).displayName" :source="vm.characterSheet.name.length > 0 ? vm.characterSheet.name : 'Character sheet'" :effect="vm.characterSheet.evaluateStatistic(vm.skillStatId).baseValue.toString()" />
                 <ModificationView v-for="modification in skillModifications" :title="modification.getDisplayTitle()" :source="modification.getDisplaySource()" :effect="modification.getDisplayEffect()" />
             </div>
 
@@ -188,12 +195,11 @@ const emptyStat = new NoStat();
 
                     </h1>
                 </div>
-                <span class="checkform-difficultydie">Effective Skill Value</span>
             </div>
 
             <div class="checkform-submit">
                 <h1><em>vs</em></h1>
-                <button @click="vm.rollCheck">Roll</button>
+                <button @click="rollCheck">Roll</button>
             </div>
 
             <div class="checkform-bottomcolumn">
@@ -207,8 +213,14 @@ const emptyStat = new NoStat();
     </div>
 
     <!-- History -->
-    <div>
-        <SkillCheckView v-for="check in vm.pastChecks" :check="check" />
+    <h2 class="checkform-section">History</h2>
+    <div class="checkform-history">
+        <SkillCheckView v-for="check in vm.pastChecks" :check="check" :characterSheet="vm.characterSheet" />
+        <a ref="checkHistoryBottom"></a>
+
+        <div v-if="vm.pastChecks.length === 0" class="checkform-hint">
+            Press 'Roll' to make a skill check
+        </div>
     </div>
 </template>
 
@@ -221,6 +233,7 @@ const emptyStat = new NoStat();
     min-height: 300px;
 
     z-index: 0;
+    flex-shrink: 0;
 }
 
 .checkform-content
@@ -424,5 +437,25 @@ const emptyStat = new NoStat();
     text-transform: none;
     color: rgba(0, 0, 0, 0.5);
     margin: 4px;
+}
+
+.checkform-history
+{
+    overflow-y: auto;
+}
+
+.checkform-hint
+{
+    text-align: center;
+    margin: 50px;
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.checkform-section
+{
+    margin-top: 10px;
+    /*text-transform: uppercase;
+    color: rgba(0, 0, 0, 0.5);
+    font-weight: bold;*/
 }
 </style>

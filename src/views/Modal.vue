@@ -53,6 +53,10 @@ function skirtClicked()
     background-color: white;
     min-width: 300px;
     min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: stretch;
+    /*overflow-y: auto;*/
 }
 
 .window-title
@@ -63,5 +67,11 @@ function skirtClicked()
 .window-content
 {
     margin: 15px;
+    flex-shrink: 1;
+    /*overflow-y: auto;*/
+
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 </style>
