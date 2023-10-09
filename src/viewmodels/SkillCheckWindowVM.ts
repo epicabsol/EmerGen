@@ -108,7 +108,7 @@ export default class SkillCheckWindowVM
         // Extra bonus
         if (this.extraBonus != 0)
         {
-            result.push(new StaticCalculationModifier("Skill check", "Extra bonus", this.extraBonus));
+            result.push(new StaticCalculationModifier("Skill check", "Extra " + (this.extraBonus > 0 ? "bonus" : "penalty"), this.extraBonus));
         }
 
         return result;

@@ -41,4 +41,9 @@ defineProps<{
     background-color: rgba(0, 0, 0, 0.1);
     flex-grow: 1;
 }
+
+.sheet-fixed
+{
+    flex-grow: 0;
+}
 </style>

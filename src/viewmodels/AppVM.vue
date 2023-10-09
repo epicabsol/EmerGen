@@ -204,7 +204,7 @@ console.log(`Loaded game data ${gameData.dataVersion} for Emergent ${gameData.ga
     </div>
 
     <!-- Formula Evaluator -->
-    <div class="sheet-content">
+    <div class="sheet-content sheet-fixed">
       <div class="evaluate-history">
         <div v-for="evaluation in evaluationHistory">
           <EvaluatedFormulaRow :result="evaluation" @reroll="addEvaluation(evaluation.formula)" />
@@ -332,6 +332,7 @@ console.log(`Loaded game data ${gameData.dataVersion} for Emergent ${gameData.ga
   display: grid;
   grid-template-columns: 1fr 1fr;
   padding: 0 2rem;
+  flex-grow: 1;
 }
 
 .stat-row

@@ -156,7 +156,7 @@ const emptyStat = new NoStat();
                 <br />
                 Details:
 
-                <ModificationView :title="'Base ' + vm.skillStatId" :source="vm.characterSheet.name" :effect="vm.characterSheet.evaluateStatistic(vm.skillStatId).baseValue.toString()" />
+                <ModificationView v-if="vm.skillStatId.length > 0" :title="'Base ' + vm.characterSheet.getStatistic(vm.skillStatId).displayName" :source="vm.characterSheet.name" :effect="vm.characterSheet.evaluateStatistic(vm.skillStatId).baseValue.toString()" />
                 <ModificationView v-for="modification in skillModifications" :title="modification.getDisplayTitle()" :source="modification.getDisplaySource()" :effect="modification.getDisplayEffect()" />
             </div>
 
