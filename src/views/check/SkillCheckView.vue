@@ -23,7 +23,7 @@ const criticalDescription = computed(() => props.check.getCriticalDegree() >= 2 
 
         <div class="check-row">
             <div class="check-column">
-                <p>{{ characterSheet.getStatistic(check.statId).displayName }}</p>
+                <p>{{ characterSheet.getStatistic(check.statId)?.displayName }}</p>
             </div>
         </div>
 
