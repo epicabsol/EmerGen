@@ -1,3 +1,4 @@
+import type { StatisticEvaluation } from "./CharacterSheet";
 
 // TODO: These could be game data
 export enum SkillCheckDifficulty
@@ -128,25 +129,27 @@ export class SkillCheck
     public dieRoll: number;
 
     /**
-     * The value of the skill specified by statId at the time this skill check was made.
-     */
-    public baseSkillValue: number;
-
-    /**
-     * The total amount of bonus the player had on this roll.
+     * The amount of bonus that was granted as part of making the roll.
      * 
-     * One bonus and two penalty would have a netBonus of -1.
+     * This is purely for reporting to the user and has already been taken into account in skillEvaluation.
      */
-    public netBonus: number;
+    public extraBonus: number;
 
-    public constructor(statId: string, baseDifficulty: SkillCheckDifficulty, netAdvantage: number, dieRoll: number, baseSkillValue: number, netBonus: number)
+    public skillEvaluation: StatisticEvaluation;
+
+    public constructor(statId: string, skillEvaluation: StatisticEvaluation, baseDifficulty: SkillCheckDifficulty, netAdvantage: number, dieRoll: number, extraBonus: number)
     {
         this.statId = statId;
+        this.skillEvaluation = skillEvaluation;
         this.baseDifficulty = baseDifficulty;
         this.netAdvantage = netAdvantage;
         this.dieRoll = dieRoll;
-        this.baseSkillValue = baseSkillValue;
-        this.netBonus = netBonus;
+        this.extraBonus = extraBonus
+    }
+
+    public getEffectiveDifficulty(): EffectiveDifficulty
+    {
+        return getEffectiveDifficulty(this.baseDifficulty, this.netAdvantage);
     }
     
     /**
@@ -156,7 +159,7 @@ export class SkillCheck
      */
     public getSuccessDegree(): number
     {
-        const skillValue = this.effectivePlayerSkillValue();
+        const skillValue = this.skillEvaluation.finalValue;
         // Rolling '1' always is at least a 'flat success' (degree zero)
         if (this.dieRoll == 1 && this.dieRoll > skillValue)
         {
@@ -186,11 +189,4 @@ export class SkillCheck
         return this.getSuccessDegree() >= 0;
     }
 
-    /**
-     * Computes the effective value of the player's skill being checked, after the bonuses and penalties have been taken into account.
-     */
-    public effectivePlayerSkillValue(): number
-    {
-        return this.baseSkillValue + this.netBonus;
-    }
 }

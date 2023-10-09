@@ -189,36 +189,98 @@ export class DerivedStat implements IStat
     }
 }
 
-export class StatisticModification
+// Modifiers of the form 'Title (Source): Effect'
+export interface ICalculationModifier
 {
-    readonly displayName: string;
-    readonly displayFormula: string;
-    readonly amount: number;
+    getDisplaySource(): string;
+    getDisplayTitle(): string;
+    getDisplayEffect(): string;
+    apply(sourceValue: number): number
+}
 
-    constructor(displayName: string, displayFormula: string, amount: number)
+export class StaticCalculationModifier implements ICalculationModifier
+{
+    private readonly displaySource: string;
+    private readonly displayTitle: string;
+    private readonly displayEffect: string;
+    private readonly delta: number;
+
+    public constructor(displaySource: string, displayTitle: string, delta: number)
     {
-        this.displayName = displayName;
-        this.displayFormula = displayFormula;
-        this.amount = amount;
+        this.displaySource = displaySource;
+        this.displayTitle = displayTitle;
+        this.displayEffect = (delta > 0 ? "+" : "") + delta.toString();
+        this.delta = delta;
+    }
+
+    getDisplaySource(): string { return this.displaySource; }
+    getDisplayTitle(): string { return this.displayTitle; }
+    getDisplayEffect(): string { return this.displayEffect; }
+    
+    apply(sourceValue: number): number
+    {
+        return sourceValue + this.delta;
     }
 }
 
+/**
+ * A snapshot of a modification made to a statistic during a calculation.
+ */
+export class StatisticModification
+{
+    /**
+     * Where this modification came from, e.g. 'Taser of Destiny'
+     */
+    readonly displaySource: string;
+
+    /**
+     * A summary of what this modification is doing, e.g. 'Weak Batteries'
+     */
+    readonly displayTitle: string;
+
+    /**
+     * A summary of the mechanical effect of this modification on the statistic, e.g. '+2'
+     */
+    readonly displayEffect: string;
+
+    constructor(displaySource: string, displayTitle: string, displayEffect: string)
+    {
+        this.displaySource = displaySource;
+        this.displayTitle = displayTitle;
+        this.displayEffect = displayEffect;
+    }
+}
+
+/**
+ * A snapshot of an evaluation of some statistic.
+ */
 export class StatisticEvaluation
 {
     readonly baseValue: number;
     readonly modifications: StatisticModification[];
     readonly finalValue: number;
 
-    constructor(baseValue: number, modifications: StatisticModification[])
+    constructor(baseValue: number, modifications: StatisticModification[], finalValue: number)
     {
         this.baseValue = baseValue;
         this.modifications = modifications;
-        this.finalValue = baseValue;
+        this.finalValue = finalValue;
+    }
 
-        for (var i = 0; i < modifications.length; i++)
+    /**
+     * Creates a new evaluation starting from this evaluation and applying the given modifiers.
+     * @param modifiers 
+     */
+    public append(modifiers: ICalculationModifier[]): StatisticEvaluation
+    {
+        // Add the modifiers
+        const modifications = [...this.modifications, ...modifiers.map(m => new StatisticModification(m.getDisplaySource(), m.getDisplayTitle(), m.getDisplayEffect()))];
+        let finalValue = this.finalValue;
+        for (const modifier of modifiers)
         {
-            this.finalValue += this.modifications[i].amount;
+            finalValue = modifier.apply(finalValue);
         }
+        return new StatisticEvaluation(this.baseValue, modifications, finalValue);
     }
 }
 
@@ -444,11 +506,11 @@ export default class CharacterSheet
             // TODO: Apply any modifiers
             const modifications: StatisticModification[] = [];
 
-            return new StatisticEvaluation(baseValue, modifications);
+            return new StatisticEvaluation(baseValue, modifications, baseValue);
         }
         else
         {
-            return new StatisticEvaluation(0, []);
+            return new StatisticEvaluation(0, [], 0);
         }
     }
 
@@ -457,18 +519,20 @@ export default class CharacterSheet
         
     }
 
-    public rollSkillCheck(statId: string, baseDifficulty: Check.SkillCheckDifficulty, netAdvantage: number, netBonus: number): Check.SkillCheck | undefined
+    public rollSkillCheck(statId: string, effectiveDifficulty: Check.EffectiveDifficulty, extraModifiers: ICalculationModifier[], baseDifficulty: Check.SkillCheckDifficulty, netAdvantage: number, extraBonus: number): Check.SkillCheck | undefined
     {
         const stat = this.getStatistic(statId);
 
         if (stat != undefined)
         {
+            // See what the base stat eval is
             const statEvaluation = this.evaluateStatistic(statId);
-            const effectiveDifficulty = Check.getEffectiveDifficulty(baseDifficulty, netAdvantage);
 
-            const dieRoll = this.evaluationContext.rollDie(Check.getDifficultyDieSides(effectiveDifficulty));
+            const finalEvaluation = statEvaluation.append(extraModifiers);
 
-            return new Check.SkillCheck(statId, baseDifficulty, netAdvantage, dieRoll, statEvaluation.finalValue, netBonus);
+            const dieRoll = this.evaluationContext.rollDie(Check.getDifficultyDieSides(effectiveDifficulty.rollDifficulty));
+
+            return new Check.SkillCheck(statId, finalEvaluation, baseDifficulty, netAdvantage, dieRoll, extraBonus);
         }
         else
         {

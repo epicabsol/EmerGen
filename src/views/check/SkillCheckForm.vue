@@ -4,6 +4,8 @@ import NumberIncrementDecrement from '../NumberIncrementDecrement.vue';
 import CharacterSheet, { type IStat } from '@/models/CharacterSheet';
 import { type IGameData } from '@/models/GameData';
 import StatisticView from '../StatisticView.vue';
+import SkillCheckView from "@/views/check/SkillCheckView.vue";
+import ModificationView from "@/views/ModificationView.vue";
 import Dropdown from "../Dropdown.vue";
 import * as Check from "../../models/SkillCheck";
 import SkillCheckWindowVM from "@/viewmodels/SkillCheckWindowVM";
@@ -19,6 +21,7 @@ const hoverDifficulty = ref<Check.SkillCheckDifficulty | null>(null);
 
 const effectiveDifficulty = computed(() => props.vm.getEffectiveDifficulty());
 const effectiveSkillValue = computed(() => props.vm.getEffectiveSkillValue());
+const skillModifications = computed(() => props.vm.gatherModifications());
 
 class NoStat implements IStat
 {
@@ -91,17 +94,18 @@ const emptyStat = new NoStat();
 
 <template>
     <div class="checkform-container">
+
+        <!-- Background columns -->
         <div class="checkform-background">
             <div class="checkform-background-column">
-
             </div>
-
             <div class="checkform-background-column">
-
             </div>
         </div>
         
         <div class="checkform-columns">
+
+            <!-- Skill column -->
             <div class="checkform-column">
                 <h3>Skill</h3>
 
@@ -148,8 +152,15 @@ const emptyStat = new NoStat();
                 
                 Extra Bonus:
                 <NumberIncrementDecrement v-model="vm.extraBonus" :change-increment="1" />
+
+                <br />
+                Details:
+
+                <ModificationView :title="'Base ' + vm.skillStatId" :source="vm.characterSheet.name" :effect="vm.characterSheet.evaluateStatistic(vm.skillStatId).baseValue.toString()" />
+                <ModificationView v-for="modification in skillModifications" :title="modification.getDisplayTitle()" :source="modification.getDisplaySource()" :effect="modification.getDisplayEffect()" />
             </div>
 
+            <!-- Difficulty column -->
             <div class="checkform-column">
                 <h3>Difficulty</h3>
                 <div class="checkform-tabs">
@@ -168,6 +179,7 @@ const emptyStat = new NoStat();
             </div>
         </div>
 
+        <!-- Totals row and go button -->
         <div class="checkform-bottomrow">
             <div class="checkform-bottomcolumn">
                 <div class="checkform-centeredrow">
@@ -181,20 +193,22 @@ const emptyStat = new NoStat();
 
             <div class="checkform-submit">
                 <h1><em>vs</em></h1>
-                <button>Roll</button>
+                <button @click="vm.rollCheck">Roll</button>
             </div>
 
             <div class="checkform-bottomcolumn">
                 <div class="checkform-centeredrow">
                     <h1 class="checkform-valuebox">
-                        1d{{ Check.getDifficultyDieSides(effectiveDifficulty.rollDifficulty) }} {{ effectiveDifficulty.extraBonus < 0 ? '+' : (effectiveDifficulty.extraBonus > 0 ? '-' : '') }} {{ effectiveDifficulty.extraBonus != 0 ? Math.abs(effectiveDifficulty.extraBonus).toString() : '' }}
+                        1d{{ Check.getDifficultyDieSides(effectiveDifficulty.rollDifficulty) }}
                     </h1>
                 </div>
             </div>
         </div>
+    </div>
 
-        
-
+    <!-- History -->
+    <div>
+        <SkillCheckView v-for="check in vm.pastChecks" :check="check" />
     </div>
 </template>
 
